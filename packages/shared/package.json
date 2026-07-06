@@ -1,0 +1,8 @@
+{
+  "name": "@homeflow/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cross-app business constants for HomeFlow.",
+  "main": "src/index.ts",
+  "types": "src/index.ts"
+}

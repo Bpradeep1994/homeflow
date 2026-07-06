@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Builds
+dist/
+.next/
+build/
+out/
+
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins*
+*.g.dart
+
+# Dev database & uploaded files (local only)
+*.sqlite
+apps/api/uploads/
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Logs & OS noise
+*.log
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+*.iml

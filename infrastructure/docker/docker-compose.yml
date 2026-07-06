@@ -1,0 +1,34 @@
+# Local production-like stack: PostgreSQL + API.
+# Run from the repo root:  docker compose -f infrastructure/docker/docker-compose.yml up
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: homeflow
+      POSTGRES_PASSWORD: homeflow-dev # change outside local dev
+      POSTGRES_DB: homeflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U homeflow"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.api
+    environment:
+      DATABASE_URL: postgres://homeflow:homeflow-dev@db:5432/homeflow
+      JWT_SECRET: change-me-in-production
+      PORT: "4000"
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

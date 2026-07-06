@@ -1,0 +1,27 @@
+name: provider_app
+description: HomeFlow provider app — professionals receive and manage jobs.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  http: ^1.2.0
+  http_parser: ^4.0.0
+  shared_preferences: ^2.3.0
+  url_launcher: ^6.3.0
+  image_picker: ^1.1.0
+  homeflow_ui:
+    path: ../../packages/ui
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
