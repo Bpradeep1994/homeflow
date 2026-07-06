@@ -29,3 +29,4 @@ Thumbs.db
 # IDE
 .idea/
 *.iml
+*.apk
