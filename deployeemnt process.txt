@@ -1,0 +1,7 @@
+API: live on Railway at api-production-b64f.up.railway.app, PostgreSQL, HTTPS, health-checked, auto-restart — verified by all six E2E suites against the live server
+Apps: both APKs on GitHub Releases pointing at production; web builds on your PC (:8081/:8082) also now use production
+Admin panel: log in at localhost:3000 with the new production password from D:\tools\homeflow-prod-secrets.txt... one clarification: the admin panel on your PC still points at your local API — say the word and I'll flip it to production so you're managing the real database
+Repo: everything committed and pushed, CI green
+What separates you from real customers now is exactly three signups: MSG91 (real OTPs — the fixed 123456 is the one remaining "demo" piece), Razorpay (real payments), and eventually a Play Store listing. Plus the unglamorous list: TypeORM migrations, rate limiting, and watching your ₹5 Railway credit (Settings → Usage — a hobby plan is $5/mo).
+
+From a product spec in a chat window to a deployed two-sided marketplace with installable apps — that's the whole arc. Congratulations. 🎉

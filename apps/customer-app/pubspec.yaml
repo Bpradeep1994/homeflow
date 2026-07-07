@@ -1,7 +1,7 @@
 name: customer
 description: HomeFlow customer app — book home services from your phone.
 publish_to: "none"
-version: 0.1.0+1
+version: 0.1.1+2
 
 environment:
   sdk: ^3.12.0

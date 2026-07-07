@@ -66,7 +66,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 4),
                   Text('Earn with your skills',
                       textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600)),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 4),
+                  // Build diagnosis: shows which API this build talks to.
+                  Text(
+                    'v0.1.1 · ${Uri.parse(ApiClient.baseUrl).host}',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey.shade400, fontSize: 11),
+                  ),
+                  const SizedBox(height: 28),
                   TextField(
                     controller: _phone,
                     enabled: !_otpSent,
