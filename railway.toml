@@ -1,0 +1,11 @@
+# Railway deployment for the HomeFlow API.
+# Build context is the repo root; the Dockerfile lives in infrastructure/.
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "infrastructure/docker/Dockerfile.api"
+
+[deploy]
+healthcheckPath = "/catalog"
+healthcheckTimeout = 120
+restartPolicyType = "on_failure"

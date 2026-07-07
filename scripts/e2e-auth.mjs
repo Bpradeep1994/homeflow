@@ -1,4 +1,4 @@
-const BASE = 'http://localhost:4000';
+const BASE = process.env.API_URL ?? 'http://localhost:4000';
 
 async function api(path, { method = 'GET', token, body } = {}) {
   const res = await fetch(BASE + path, {
@@ -16,7 +16,7 @@ const ok = (r, what) => {
 const step = (name, val = '') => console.log(`✔ ${name}`, val);
 
 // 1. Admin logs in with email + password
-const adminLogin = ok(await api('/auth/login', { method: 'POST', body: { email: 'admin@homeflow.in', password: 'admin123' } }), 'admin login');
+const adminLogin = ok(await api('/auth/login', { method: 'POST', body: { email: 'admin@homeflow.in', password: process.env.ADMIN_PASSWORD ?? 'admin123' } }), 'admin login');
 step('admin email+password login', adminLogin.user.role);
 
 // 2. passwordHash never leaks — in login response or user listings

@@ -27,7 +27,9 @@ import { UsersModule } from './users/users.module';
             type: 'postgres',
             url: process.env.DATABASE_URL,
             autoLoadEntities: true,
-            synchronize: process.env.NODE_ENV !== 'production',
+            // Explicit opt-in schema sync until real migrations exist
+            // (DB_SYNC=true on Railway). Never rely on NODE_ENV for this.
+            synchronize: process.env.DB_SYNC === 'true' || process.env.NODE_ENV !== 'production',
           }
         : {
             type: 'better-sqlite3',

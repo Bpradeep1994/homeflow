@@ -19,7 +19,7 @@ const login = (phone, extra = {}) =>
 const cust = await login('+919876543210', { name: 'Nayak' });
 const ravi = await login('+919000000001'); // AC Repair, online (seeded)
 const imran = await login('+919777766666', { role: 'provider', name: 'Imran Ali' });
-const admin = await api('/auth/login', { method: 'POST', body: { email: 'admin@homeflow.in', password: 'admin123' } });
+const admin = await api('/auth/login', { method: 'POST', body: { email: 'admin@homeflow.in', password: process.env.ADMIN_PASSWORD ?? 'admin123' } });
 
 // Second AC provider: verify + approve + online (idempotent across runs)
 const imranProfile = await api('/provider/profile', { token: imran.accessToken });

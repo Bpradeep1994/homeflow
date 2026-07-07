@@ -68,7 +68,7 @@ const reported = await api(`/reviews/${review.id}/report`, {
   body: { reason: 'Testing the moderation flow' },
 });
 if (!reported.reported) throw new Error('report failed');
-const admin = await api('/auth/login', { method: 'POST', body: { email: 'admin@homeflow.in', password: 'admin123' } });
+const admin = await api('/auth/login', { method: 'POST', body: { email: 'admin@homeflow.in', password: process.env.ADMIN_PASSWORD ?? 'admin123' } });
 const flagged = await api('/admin/reviews/reported', { token: admin.accessToken });
 if (!flagged.find((r) => r.id === review.id)) throw new Error('reported review missing from admin list');
 step('review reported + visible to admin', `${flagged.length} flagged`);

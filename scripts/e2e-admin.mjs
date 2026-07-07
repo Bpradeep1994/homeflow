@@ -1,4 +1,4 @@
-const BASE = 'http://localhost:4000';
+const BASE = process.env.API_URL ?? 'http://localhost:4000';
 
 async function api(path, { method = 'GET', token, body, raw } = {}) {
   const res = await fetch(BASE + path, {
