@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { Booking } from '../entities/booking.entity';
 import { SubService } from '../entities/catalog.entity';
+import { Coupon } from '../entities/coupon.entity';
 import { Payment } from '../entities/payment.entity';
 import { ProviderProfile } from '../entities/provider-profile.entity';
 import { Review } from '../entities/review.entity';
@@ -13,7 +14,7 @@ import { BookingsService } from './bookings.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Booking, SubService, User, ProviderProfile, Payment, Review]),
+    TypeOrmModule.forFeature([Booking, SubService, User, ProviderProfile, Payment, Review, Coupon]),
     NotificationsModule,
   ],
   controllers: [BookingsController, ProviderController, AdminBookingsController],

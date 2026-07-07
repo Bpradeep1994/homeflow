@@ -26,6 +26,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
   DateTime? _date;
   String? _timeSlot;
   bool _submitting = false;
+  String? _couponCode;
+  int _discount = 0;
 
   bool get _canContinue => switch (_step) {
         0 => _address != null,
@@ -36,6 +38,47 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
 
   int get _subtotal => widget.services.fold(0, (sum, s) => sum + s.price);
   bool get _hasQuoteItems => widget.services.any((s) => s.isQuoteOnVisit);
+
+  /// Client-side coupon preview; the API re-validates authoritatively on confirm.
+  Future<void> _applyCoupon(String raw) async {
+    final code = raw.trim().toUpperCase();
+    if (code.isEmpty) return;
+    try {
+      final coupons = await ApiClient.instance.coupons();
+      final match = coupons.cast<Map<String, dynamic>>().where((c) => c['code'] == code).firstOrNull;
+      if (match == null) {
+        setState(() {
+          _couponCode = null;
+          _discount = 0;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('Coupon $code is not valid')));
+        }
+        return;
+      }
+      final value = match['value'] as int;
+      final rawDiscount =
+          match['type'] == 'FLAT' ? value : ((_subtotal * value) / 100).round();
+      setState(() {
+        _couponCode = code;
+        _discount = rawDiscount > _subtotal ? _subtotal : rawDiscount;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$code applied — you save ${formatRupees(_discount)}')));
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
+  }
+
+  void _removeCoupon() => setState(() {
+        _couponCode = null;
+        _discount = 0;
+      });
 
   void _next() {
     if (_step < _stepTitles.length - 1) {
@@ -56,6 +99,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
         address: '${_address!.label}: ${_address!.line}',
         date: iso,
         timeSlot: _timeSlot!,
+        couponCode: _couponCode,
       );
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
@@ -89,7 +133,15 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                 0 => _AddressStep(selected: _address, onSelect: (a) => setState(() => _address = a)),
                 1 => _DateStep(selected: _date, onSelect: (d) => setState(() => _date = d)),
                 2 => _TimeStep(selected: _timeSlot, onSelect: (t) => setState(() => _timeSlot = t)),
-                3 => _PriceStep(services: widget.services, subtotal: _subtotal, hasQuoteItems: _hasQuoteItems),
+                3 => _PriceStep(
+                    services: widget.services,
+                    subtotal: _subtotal,
+                    hasQuoteItems: _hasQuoteItems,
+                    couponCode: _couponCode,
+                    discount: _discount,
+                    onApplyCoupon: _applyCoupon,
+                    onRemoveCoupon: _removeCoupon,
+                  ),
                 _ => _ConfirmStep(
                     category: widget.category,
                     services: widget.services,
@@ -97,6 +149,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                     date: _date!,
                     timeSlot: _timeSlot!,
                     subtotal: _subtotal,
+                    couponCode: _couponCode,
+                    discount: _discount,
                   ),
               },
             ),
@@ -391,15 +445,35 @@ class _TimeStep extends StatelessWidget {
   }
 }
 
-class _PriceStep extends StatelessWidget {
-  const _PriceStep({required this.services, required this.subtotal, required this.hasQuoteItems});
+class _PriceStep extends StatefulWidget {
+  const _PriceStep({
+    required this.services,
+    required this.subtotal,
+    required this.hasQuoteItems,
+    required this.couponCode,
+    required this.discount,
+    required this.onApplyCoupon,
+    required this.onRemoveCoupon,
+  });
 
   final List<SubService> services;
   final int subtotal;
   final bool hasQuoteItems;
+  final String? couponCode;
+  final int discount;
+  final ValueChanged<String> onApplyCoupon;
+  final VoidCallback onRemoveCoupon;
+
+  @override
+  State<_PriceStep> createState() => _PriceStepState();
+}
+
+class _PriceStepState extends State<_PriceStep> {
+  final _coupon = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
+    final subtotal = widget.subtotal;
     return ListView(
       children: [
         Text('Price estimate', style: Theme.of(context).textTheme.titleMedium),
@@ -409,7 +483,7 @@ class _PriceStep extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                for (final s in services)
+                for (final s in widget.services)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     child: Row(
@@ -422,12 +496,27 @@ class _PriceStep extends StatelessWidget {
                       ],
                     ),
                   ),
+                if (widget.discount > 0) ...[
+                  const Divider(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text('Coupon ${widget.couponCode}',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600, color: Colors.green.shade700)),
+                      ),
+                      Text('− ${formatRupees(widget.discount)}',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700, color: Colors.green.shade700)),
+                    ],
+                  ),
+                ],
                 const Divider(height: 24),
                 Row(
                   children: [
                     const Expanded(
                         child: Text('Estimated total', style: TextStyle(fontWeight: FontWeight.w700))),
-                    Text(formatRupees(subtotal),
+                    Text(formatRupees(subtotal - widget.discount),
                         style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
                   ],
                 ),
@@ -435,7 +524,42 @@ class _PriceStep extends StatelessWidget {
             ),
           ),
         ),
-        if (hasQuoteItems) ...[
+        const SizedBox(height: 12),
+        // Coupon entry
+        if (widget.couponCode == null)
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _coupon,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: InputDecoration(
+                    hintText: 'Coupon code (e.g. WELCOME100)',
+                    isDense: true,
+                    prefixIcon: const Icon(Icons.local_offer_outlined, size: 20),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onSubmitted: widget.onApplyCoupon,
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
+                onPressed: () => widget.onApplyCoupon(_coupon.text),
+                child: const Text('Apply'),
+              ),
+            ],
+          )
+        else
+          Align(
+            alignment: Alignment.centerLeft,
+            child: InputChip(
+              avatar: Icon(Icons.local_offer, size: 16, color: Colors.green.shade700),
+              label: Text('${widget.couponCode} · saving ${formatRupees(widget.discount)}'),
+              onDeleted: widget.onRemoveCoupon,
+            ),
+          ),
+        if (widget.hasQuoteItems) ...[
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(12),
@@ -473,6 +597,8 @@ class _ConfirmStep extends StatelessWidget {
     required this.date,
     required this.timeSlot,
     required this.subtotal,
+    required this.couponCode,
+    required this.discount,
   });
 
   final ServiceCategory category;
@@ -481,6 +607,8 @@ class _ConfirmStep extends StatelessWidget {
   final DateTime date;
   final String timeSlot;
   final int subtotal;
+  final String? couponCode;
+  final int discount;
 
   @override
   Widget build(BuildContext context) {
@@ -501,7 +629,13 @@ class _ConfirmStep extends StatelessWidget {
                 const Divider(height: 24),
                 _row(Icons.event, formatDate(date), timeSlot),
                 const Divider(height: 24),
-                _row(Icons.currency_rupee, 'Estimated total', formatRupees(subtotal)),
+                _row(
+                  Icons.currency_rupee,
+                  'Estimated total',
+                  discount > 0
+                      ? '${formatRupees(subtotal - discount)}  ($couponCode saves ${formatRupees(discount)})'
+                      : formatRupees(subtotal),
+                ),
               ],
             ),
           ),

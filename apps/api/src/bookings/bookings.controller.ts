@@ -2,6 +2,7 @@ import {
   ArrayNotEmpty,
   IsArray,
   IsIn,
+  IsOptional,
   IsString,
   MinLength,
 } from 'class-validator';
@@ -35,6 +36,10 @@ class CreateBookingDto {
 
   @IsString()
   timeSlot: string;
+
+  @IsOptional()
+  @IsString()
+  couponCode?: string;
 }
 
 class RescheduleDto {
@@ -58,7 +63,7 @@ export class BookingsController {
   @Post()
   create(@Req() req: AuthedRequest, @Body() dto: CreateBookingDto) {
     requireRole(req, 'customer');
-    return this.bookings.create(req.user.sub, dto.serviceIds, dto.address, dto.date, dto.timeSlot);
+    return this.bookings.create(req.user.sub, dto.serviceIds, dto.address, dto.date, dto.timeSlot, dto.couponCode);
   }
 
   @Get()

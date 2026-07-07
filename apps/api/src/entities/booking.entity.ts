@@ -48,9 +48,15 @@ export class Booking {
   @Column({ type: 'text', default: BookingStatus.PENDING })
   status: BookingStatus;
 
-  /** Estimated total in rupees (sum of service prices at booking time). */
+  /** Amount payable in rupees (service subtotal minus any coupon discount). */
   @Column()
   amount: number;
+
+  @Column({ nullable: true })
+  couponCode?: string;
+
+  @Column({ default: 0 })
+  discount: number;
 
   @Column({ type: 'simple-json', default: '[]' })
   declinedBy: string[]; // provider ids who passed on this offer

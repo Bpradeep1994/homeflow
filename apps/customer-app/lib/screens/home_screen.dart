@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../api/client.dart';
-import '../data/catalog.dart';
 import '../models/models.dart';
 import '../theme.dart';
 import 'category_screen.dart';
@@ -19,12 +18,18 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late Future<List<ServiceCategory>> _catalog = _load();
+  late Future<List<Offer>> _offers = _loadOffers();
 
   Future<List<ServiceCategory>> _load() async {
     final raw = await ApiClient.instance.catalog();
     return [
       for (final (i, c) in raw.indexed) ServiceCategory.fromJson(c as Map<String, dynamic>, i),
     ];
+  }
+
+  Future<List<Offer>> _loadOffers() async {
+    final raw = await ApiClient.instance.coupons();
+    return [for (final (i, c) in raw.indexed) Offer.fromCoupon(c as Map<String, dynamic>, i)];
   }
 
   String get _greeting {
@@ -40,7 +45,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final name = (ApiClient.instance.currentUser?['name'] as String?)?.split(' ').first;
     return SafeArea(
       child: RefreshIndicator(
-        onRefresh: () async => setState(() => _catalog = _load()),
+        onRefresh: () async => setState(() {
+          _catalog = _load();
+          _offers = _loadOffers();
+        }),
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
           children: [
@@ -118,16 +126,29 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 28),
-            Text('Special Offers', style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 130,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: offers.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 12),
-                itemBuilder: (context, i) => _OfferCard(offer: offers[i]),
-              ),
+            FutureBuilder<List<Offer>>(
+              future: _offers,
+              builder: (context, snapshot) {
+                final offers = snapshot.data ?? [];
+                if (offers.isEmpty) return const SizedBox.shrink();
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Special Offers',
+                        style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 130,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: offers.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 12),
+                        itemBuilder: (context, i) => _OfferCard(offer: offers[i]),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         ),

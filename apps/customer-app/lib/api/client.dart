@@ -122,13 +122,18 @@ class ApiClient extends ChangeNotifier {
     required String address,
     required String date,
     required String timeSlot,
+    String? couponCode,
   }) async =>
       await _request('POST', '/bookings', body: {
         'serviceIds': serviceIds,
         'address': address,
         'date': date,
         'timeSlot': timeSlot,
+        'couponCode': ?couponCode,
       }) as Map<String, dynamic>;
+
+  /// Active coupon campaigns (public) — powers the offers carousel.
+  Future<List<dynamic>> coupons() async => await _request('GET', '/coupons') as List<dynamic>;
 
   Future<List<dynamic>> myBookings() async => await _request('GET', '/bookings') as List<dynamic>;
 

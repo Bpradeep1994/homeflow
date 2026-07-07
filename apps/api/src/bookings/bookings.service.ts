@@ -10,6 +10,7 @@ import { In, Repository } from 'typeorm';
 
 import { Booking, BookingStatus } from '../entities/booking.entity';
 import { SubService } from '../entities/catalog.entity';
+import { Coupon } from '../entities/coupon.entity';
 import { Payment } from '../entities/payment.entity';
 import { ProviderProfile, VerificationStatus } from '../entities/provider-profile.entity';
 import { Review } from '../entities/review.entity';
@@ -32,6 +33,7 @@ export class BookingsService {
     @InjectRepository(ProviderProfile) private readonly profiles: Repository<ProviderProfile>,
     @InjectRepository(Payment) private readonly payments: Repository<Payment>,
     @InjectRepository(Review) private readonly reviewsRepo: Repository<Review>,
+    @InjectRepository(Coupon) private readonly coupons: Repository<Coupon>,
     private readonly notifications: NotificationsService,
   ) {}
 
@@ -62,7 +64,28 @@ export class BookingsService {
     return booking;
   }
 
-  async create(customerId: string, serviceIds: string[], address: string, date: string, timeSlot: string) {
+  /** Validates a coupon and returns the discount for the given subtotal. */
+  private async applyCoupon(code: string, subtotal: number): Promise<{ coupon: Coupon; discount: number }> {
+    const coupon = await this.coupons.findOneBy({ code: code.toUpperCase() });
+    const today = new Date().toISOString().slice(0, 10);
+    if (!coupon || !coupon.active || coupon.expiresAt < today) {
+      throw new BadRequestException('This coupon is not valid');
+    }
+    if (coupon.used >= coupon.maxUses) {
+      throw new BadRequestException('This coupon is fully used up');
+    }
+    const raw = coupon.type === 'FLAT' ? coupon.value : Math.round((subtotal * coupon.value) / 100);
+    return { coupon, discount: Math.min(raw, subtotal) };
+  }
+
+  async create(
+    customerId: string,
+    serviceIds: string[],
+    address: string,
+    date: string,
+    timeSlot: string,
+    couponCode?: string,
+  ) {
     const services = await this.services.find({
       where: { id: In(serviceIds) },
       relations: { category: true },
@@ -75,6 +98,13 @@ export class BookingsService {
     const customer = await this.users.findOneByOrFail({ id: customerId });
     if (customer.status === 'BLOCKED') throw new ForbiddenException('Account is blocked — contact support');
 
+    const subtotal = services.reduce((sum, s) => sum + s.price, 0);
+    let coupon: Coupon | undefined;
+    let discount = 0;
+    if (couponCode) {
+      ({ coupon, discount } = await this.applyCoupon(couponCode, subtotal));
+    }
+
     const booking = await this.bookings.save(
       this.bookings.create({
         id: `HF-${Date.now().toString(36).toUpperCase()}`,
@@ -83,12 +113,17 @@ export class BookingsService {
         address,
         date,
         timeSlot,
-        amount: services.reduce((sum, s) => sum + s.price, 0),
+        amount: subtotal - discount,
+        couponCode: coupon?.code,
+        discount,
         status: BookingStatus.PENDING,
         declinedBy: [],
         history: [{ status: BookingStatus.PENDING, at: new Date().toISOString() }],
       }),
     );
+    if (coupon) {
+      await this.coupons.increment({ code: coupon.code }, 'used', 1);
+    }
 
     await this.dispatch(booking, services[0].category.name);
     return booking;

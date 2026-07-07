@@ -99,4 +99,21 @@ const resolved = await api(`/admin/tickets/${ticket.id}`, { method: 'PATCH', tok
 if (resolved.status !== 'RESOLVED') throw new Error('resolve failed');
 step('ticket raised + resolved by admin', ticket.subject);
 
+// --- Coupons at checkout ---
+const couponBooking = await api('/bookings', {
+  method: 'POST', token: t,
+  body: { serviceIds: ['ac-service'], address: addrs[0].line, date: '2026-07-09', timeSlot: '14:00 – 16:00', couponCode: 'welcome100' },
+});
+if (couponBooking.amount !== 399 || couponBooking.discount !== 100 || couponBooking.couponCode !== 'WELCOME100') {
+  throw new Error(`coupon math wrong: ${JSON.stringify({ amount: couponBooking.amount, discount: couponBooking.discount })}`);
+}
+step('coupon applied at checkout', `499 → ₹${couponBooking.amount} (WELCOME100, case-insensitive)`);
+const badCoupon = await fetch(`${BASE}/bookings`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json', authorization: `Bearer ${t}` },
+  body: JSON.stringify({ serviceIds: ['ac-service'], address: addrs[0].line, date: '2026-07-09', timeSlot: '14:00 – 16:00', couponCode: 'FAKE99' }),
+});
+if (badCoupon.status !== 400) throw new Error('invalid coupon accepted');
+step('invalid coupon rejected', '400');
+
 console.log('\n✅ CUSTOMER FEATURES E2E PASSED');

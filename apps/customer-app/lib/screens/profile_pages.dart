@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api/client.dart';
-import '../data/catalog.dart';
+import '../models/models.dart';
 
 class PaymentMethodsScreen extends StatelessWidget {
   const PaymentMethodsScreen({super.key});
@@ -66,49 +66,74 @@ class PaymentMethodsScreen extends StatelessWidget {
   }
 }
 
-class CouponsScreen extends StatelessWidget {
+class CouponsScreen extends StatefulWidget {
   const CouponsScreen({super.key});
+
+  @override
+  State<CouponsScreen> createState() => _CouponsScreenState();
+}
+
+class _CouponsScreenState extends State<CouponsScreen> {
+  late final Future<List<Offer>> _offers = _load();
+
+  Future<List<Offer>> _load() async {
+    final raw = await ApiClient.instance.coupons();
+    return [for (final (i, c) in raw.indexed) Offer.fromCoupon(c as Map<String, dynamic>, i)];
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('My coupons', style: TextStyle(fontWeight: FontWeight.w700))),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(20),
-        itemCount: offers.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 12),
-        itemBuilder: (context, i) {
-          final offer = offers[i];
-          return Card(
-            clipBehavior: Clip.antiAlias,
-            child: Row(
-              children: [
-                Container(width: 6, height: 96, color: offer.color),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(offer.title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                      const SizedBox(height: 2),
-                      Text(offer.subtitle, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-                      const SizedBox(height: 6),
-                      Text('Code: ${offer.code}',
-                          style: TextStyle(
-                              color: offer.color, fontWeight: FontWeight.w700, fontSize: 13, letterSpacing: 0.5)),
-                    ],
-                  ),
+      body: FutureBuilder<List<Offer>>(
+        future: _offers,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) return Center(child: Text(snapshot.error.toString()));
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          final offers = snapshot.data!;
+          if (offers.isEmpty) {
+            return Center(
+              child: Text('No active coupons right now',
+                  style: TextStyle(color: Colors.grey.shade600)),
+            );
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.all(20),
+            itemCount: offers.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
+            itemBuilder: (context, i) {
+              final offer = offers[i];
+              return Card(
+                clipBehavior: Clip.antiAlias,
+                child: Row(
+                  children: [
+                    Container(width: 6, height: 96, color: offer.color),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(offer.title,
+                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                          const SizedBox(height: 2),
+                          Text(offer.subtitle,
+                              style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                          const SizedBox(height: 6),
+                          Text('Code: ${offer.code}',
+                              style: TextStyle(
+                                  color: offer.color,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  letterSpacing: 0.5)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
                 ),
-                TextButton(
-                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('${offer.code} will apply automatically at checkout')),
-                  ),
-                  child: const Text('APPLY'),
-                ),
-                const SizedBox(width: 6),
-              ],
-            ),
+              );
+            },
           );
         },
       ),

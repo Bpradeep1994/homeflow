@@ -163,8 +163,21 @@ class ApiBooking {
   bool get canCancel => status == BookingStatus.searching || status == BookingStatus.assigned;
 }
 
+const _offerColors = [Color(0xFF0D9488), Color(0xFF3B82F6), Color(0xFF8B5CF6), Color(0xFFEC4899)];
+
 class Offer {
   const Offer({required this.title, required this.subtitle, required this.code, required this.color});
+
+  factory Offer.fromCoupon(Map<String, dynamic> json, int index) {
+    final type = json['type'] as String;
+    final value = json['value'] as int;
+    return Offer(
+      title: type == 'FLAT' ? 'FLAT ₹$value OFF' : '$value% OFF',
+      subtitle: '${json['title']} · till ${json['expiresAt']}',
+      code: json['code'] as String,
+      color: _offerColors[index % _offerColors.length],
+    );
+  }
 
   final String title;
   final String subtitle;
