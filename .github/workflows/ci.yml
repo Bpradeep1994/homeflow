@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api-e2e:
+    name: API build + E2E suites
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+
+      - name: Install & build API
+        working-directory: apps/api
+        run: |
+          npm ci
+          npm run build
+
+      - name: Boot API (SQLite dev mode, self-seeding)
+        working-directory: apps/api
+        run: |
+          node dist/main.js &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:4000/catalog >/dev/null && break
+            sleep 1
+          done
+          curl -sf http://localhost:4000/catalog >/dev/null
+
+      - name: Run all E2E suites
+        run: |
+          for s in e2e-booking e2e-admin e2e-payments e2e-auth e2e-customer-features e2e-provider; do
+            echo "── $s ──"
+            node scripts/$s.mjs
+          done
+
+  flutter-apps:
+    name: Flutter analyze + test (customer & provider)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.4
+          channel: stable
+          cache: true
+
+      - name: Customer app
+        working-directory: apps/customer-app
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
+
+      - name: Provider app
+        working-directory: apps/provider-app
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
+
+  admin-web:
+    name: Admin panel lint + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/admin-web/package-lock.json
+
+      - name: Install, lint, build
+        working-directory: apps/admin-web
+        run: |
+          npm ci
+          npx eslint src
+          npm run build
